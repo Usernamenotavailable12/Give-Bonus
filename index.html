@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Token and Bonus</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  background-color: #f0f0f0;
+}
+.form-container {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.form-group {
+  margin-bottom: 15px;
+}
+.form-group label {
+  display:block;
+  margin-bottom:5px;
+  font-weight:bold;
+}
+.form-group input, .form-group select {
+  width:94%;
+  padding:10px;
+  border:1px solid #ccc;
+  border-radius:5px;
+}
+.btn {
+  width:100%;
+  padding:10px;
+  background-color:#007bff;
+  color:white;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+.btn:hover {
+  background-color:#0056b3;
+}
+.success-message {
+  color:green;
+  text-align:center;
+}
+</style>
+</head>
+<body>
+<div class="form-container" id="app">
+  <!-- Login Form -->
+  <form id="login-form">
+    <div class="form-group">
+      <label for="username">Email</label>
+      <input type="email" id="username" placeholder="Enter your email" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Enter your password" required>
+    </div>
+    <button type="submit" class="btn">Login</button>
+  </form>
+  
+  <!-- Bonus Form -->
+  <form id="bonus-form" style="display: none;">
+    <div class="form-group">
+      <label for="bonusUserId">User ID</label>
+      <input type="text" id="bonusUserId" placeholder="Enter User ID" required>
+    </div>
+    <div class="form-group">
+      <label for="bonusReason">Reason</label>
+      <select id="bonusReason" required>
+        <option value="">Select Reason</option>
+        <option value="CASHBACK">CASHBACK</option>
+        <option value="COMPENSATION">COMPENSATION</option>
+        <option value="GOODWILL">GOODWILL</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="bonusId">Bonus ID</label>
+      <input type="text" id="bonusId" placeholder="Enter Bonus ID" required>
+    </div>
+    <button type="submit" class="btn">Give Bonus</button>
+  </form>
+  
+  <div class="success-message" id="success-message"></div>
+</div>
+
+<script>
+fetch("https://7258ec40-ip-whitelist.gdzneladze.workers.dev")
+.then(res => {
+  if (res.ok) {
+    document.getElementById("app").style.display = "block";
+  } else {
+    document.body.innerHTML = "<h1>Access Denied. Your IP is not whitelisted.</h1>";
+  }
+})
+.catch(() => {
+  document.body.innerHTML = "<h1>Error: Unable to verify IP.</h1>";
+});
+
+document.getElementById("app").style.display = "none";
+
+document.addEventListener("DOMContentLoaded", () => {
+  const loginForm = document.getElementById("login-form");
+  const bonusForm = document.getElementById("bonus-form");
+  const successMessage = document.getElementById("success-message");
+  let token = null;
+
+  // Login form submission
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    const loginQuery = {
+      query: "mutation Login($input: LoginInput!) { login(input: $input) { refreshToken } }",
+      variables: {
+        input: {
+          brandId: "ab",
+          username: username,
+          password: password
+        }
+      }
+    };
+
+    try {
+      const res = await fetch("https://www.ambassadoribet.com/_internal/gql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loginQuery)
+      });
+      const data = await res.json();
+      if (data?.data?.login?.refreshToken) {
+        token = data.data.login.refreshToken;
+        loginForm.style.display = "none";
+        bonusForm.style.display = "block";
+      } else {
+        alert("Login failed. Please check your credentials.");
+      }
+    } catch (err) {
+      console.error("Error during login:", err);
+    }
+  });
+
+  // Bonus form submission
+  bonusForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const userId = document.getElementById("bonusUserId").value;
+    const reason = document.getElementById("bonusReason").value;
+    const bonusId = document.getElementById("bonusId").value;
+
+    const bonusQuery = {
+      query: `mutation GiveUserBonus($input: GiveUserBonusInput!) {
+        giveUserBonus(input: $input) {
+          userBonus {
+            bonusId
+            userId
+          }
+        }
+      }`,
+      variables: {
+        input: {
+          userId: userId,
+          reason: reason,
+          bonusId: bonusId
+        }
+      }
+    };
+
+    try {
+      const res = await fetch("https://www.ambassadoribet.com/_internal/gql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(bonusQuery)
+      });
+      const data = await res.json();
+      if (data?.data?.giveUserBonus?.userBonus) {
+        successMessage.textContent = "Bonus given successfully!";
+      } else {
+        alert("Failed to give bonus.");
+      }
+    } catch (err) {
+      console.error("Error giving bonus:", err);
+    }
+  });
+});
+</script>
+</body>
+</html>
